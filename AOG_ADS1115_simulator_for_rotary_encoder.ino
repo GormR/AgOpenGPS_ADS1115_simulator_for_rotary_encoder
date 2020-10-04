@@ -80,6 +80,8 @@ uint8_t  I2Cresponse[2];    // data sent to AOG via I²C to emulate ACS1015
 uint8_t  I2Cstate = 0;      // used for EEPROM storage function: 
                             // 0 = start, 1 = normal operating, 2 = store, 3 = clear, 4 = wait for idle
 bool     storedValues = false; // set, if values came from EEPROM
+bool     up_down;           // indicates direction
+bool     up_down10;         // helper for centering
 
 String   inputString = "";  // a string to hold incoming NMEA data
 
@@ -89,7 +91,8 @@ uint16_t report = 0;        // send debug output every second
 // Steering wheel incremental encoder interrupt
 void SteeringWheelEncoderInterrupt() 
 {
-  if (digitalRead(Ch_B)) SWP++; else SWP--;
+  up_down = digitalRead(Ch_B);
+  if (up_down) SWP++; else SWP--;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -232,6 +235,7 @@ void loop()
     {
       centerState = 1;
       SWP10 = SWP;
+      up_down10 = up_down;
       Serial.println("Center input active.");
     }
   }
@@ -240,9 +244,12 @@ void loop()
     if (centerState == 1) // 01 (= inactive) edge of sensor or bushbutton detected => set center
     {
       centerState++;
-      steerSettings.SWPoffset = WAS0deg - ((SWP10 + SWP) >> 1); // = AOGzero - center of active input period
-      Serial.print("Center set to ");
-      Serial.println((SWP10 + SWP) >> 1);
+      if (up_down == up_down10)  // only set on pass-through
+      {
+        steerSettings.SWPoffset = WAS0deg - ((SWP10 + SWP) >> 1); // = AOGzero - center of active input period
+        Serial.print("Center set to ");
+        Serial.println((SWP10 + SWP) >> 1);
+      }
     }
   }
   
