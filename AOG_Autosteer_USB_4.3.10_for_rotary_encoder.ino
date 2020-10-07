@@ -1,25 +1,17 @@
+// Brian_Tee's code with extensions for incremental encoder and engagement servo
+// Version 0.3
 
 ////////////////// User Settings /////////////////////////
-  /* 
-   *  Wheel angle sensor zero point...
-   *  
-   * 3320 minus 127 = 3193. 1288 counts per 1 volt
-   * The 127 (half of 255) is so you can take WAS zero of 3320 
-   * from 3193 to 3347. Zero from AOG is sent as a number from 0 to 255. 
-   * 
-   * Leave at 3193 - Only change if using a factory OEM wheel angle Sensor
-   * Put your wheels straight forward, adjust WAS physical position
-   * So it puts out 2.5v. Do a good installation!
-   * 
-   * Factory WAS - Wheels pointing forward, measure the voltage. 
-   * Example 2.2v - So, 2.5 minus 2.2 = 0.3v times 
-   * 1288 counts per volt = 386 counts. 3320 - 386 - 127 = 2706.
-   * So your new WAS_ZERO is 2706.
-   * 
    * Engagement Servo Motor (moves driving gear for steering wheel)
    * - Connect servo input to D5
    * - Set "Pulselength" according to the servo motor position (try and error)
    */
+
+  // Engagement Servo (connects and disconnects steering servo motor and steering wheel)
+  // my servo: LX3325MG: range 400..2560µs for 200° => 10.8µs per 1°, middle: 1480µs, 180°=508..2452µs
+  #define Pulselength_Off 508
+  #define Pulselength_On  2452
+/////////////////////////////////////////////
 
   #define WAS_ZERO 3193    
 
@@ -31,13 +23,6 @@
 
   //PWM Frequency -> 490hz (default) = 0 and -> 122hz = 1  -> 3921hz = 2
   #define PWM_Frequency 0
-
-  // Engagement Servo (connects and disconnects steering servo motor and steering wheel)
-  // my servo: LX3325MG: range 400..2560µs for 200° => 10.8µs per 1°, middle: 1480µs, 180°=508..2452µs
-  #define Pulselength_Off 508
-  #define Pulselength_On  2452
-  
-/////////////////////////////////////////////
 
   // if not in eeprom, overwrite 
   #define EEP_Ident 4310  
@@ -69,7 +54,7 @@
   #define WAS0deg 13280       // 0° by definition (BrianTee)
   #define SWIEident 4711 
   #define EEstart 100         // EEPROM location
-  #define magicAckermann 50   // AckermannFix parameter to force EEPROM reset
+  #define magicAckermann 51   // AckermannFix parameter to force EEPROM reset
   struct SWIEstorage 
   {
     uint16_t SWPmax = 100;    // max. position, will be 100 + number_of_encoder_turns x resolution_of_encoder 
@@ -84,6 +69,7 @@
   bool     storedValues = false; // set, if values came from EEPROM
   bool     up_down;           // indicates direction
   bool     up_down10;         // helper for centering
+  uint16_t debug=0;           // for debugging
 ////////////////////////////////////////////////////////////////////////////
 
   //--------------------------- Switch Input Pins ------------------------
@@ -282,11 +268,10 @@ void setup()
   {
       EEPROM.get(EEstart + 2, SWIEsettings);  // get last values
       storedValues = true;
-//      Serial.println("Values from EEPROM: ");
-//      Serial.print("SWPmax: ");
-//      Serial.println(SWIEsettings.SWPmax);
-//      Serial.print("SWPoffset: ");
-//      Serial.println(SWIEsettings.SWPoffset);
+      Serial.print("SWPmax: ");
+      Serial.print(SWIEsettings.SWPmax);
+      Serial.print(", SWPoffset: ");
+      Serial.println(SWIEsettings.SWPoffset);
   }
 //  else Serial.println("Starting with default values.");
   delay(100);
@@ -578,7 +563,7 @@ void loop()
         steeringPosition = (steeringPosition >> 2); //bit shift by 2  0 to 6640 is 0 to 5v
       }
     }
-   
+
     //DETERMINE ACTUAL STEERING POSITION
     steeringPosition = (steeringPosition - steerSettings.steeringPositionZero);   //read the steering position sensor
           
@@ -636,6 +621,7 @@ void loop()
         pulseCount=0;
      }           
   	} //end of timed loop
+
 
   //This runs continuously, not timed //// Serial Receive Data/Settings /////////////////
   delay (5);
@@ -799,23 +785,14 @@ void loop()
     EEPROM.put(40, aogSettings);
     ////////////////////////////////////////////////////////////////////////////
     // Steering wheel incremental encoder
-    if (aogSettings.AckermanFix == magicAckermann)
+    if (aogSettings.AckermanFix <= magicAckermann)
     {
-      EEPROM.put(EEstart, 0xff);                  // clear EERPROM
-//      Serial.println();
-//      Serial.println("EEPROM reset.");
-//      Serial.println(aogSettings.AckermanFix);
+      if (aogSettings.AckermanFix != magicAckermann) EEPROM.put(EEstart, 0xff); else EEPROM.put(EEstart, SWIEident);
     }
-    else
+    else if (SWIEsettings.SWPmax & 0xff00)
     {
       EEPROM.put(EEstart, SWIEident);
       EEPROM.put(EEstart + 2, SWIEsettings);   
-//      Serial.println();
-//      Serial.println("New values stored to EEPROM: ");
-//      Serial.print("SWPmax: ");
-//      Serial.println(SWIEsettings.SWPmax);
-//      Serial.print("SWPoffset: ");
-//      Serial.println(SWIEsettings.SWPoffset);
     }
     delay(100);
 ////////////////////////////////////////////////////////////////////////////
