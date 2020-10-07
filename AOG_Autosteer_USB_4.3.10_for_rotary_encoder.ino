@@ -2,7 +2,7 @@
 // Version 0.3
 
 ////////////////// User Settings /////////////////////////
-   * Engagement Servo Motor (moves driving gear for steering wheel)
+  /* Engagement Servo Motor (moves driving gear for steering wheel)
    * - Connect servo input to D5
    * - Set "Pulselength" according to the servo motor position (try and error)
    */
